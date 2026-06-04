@@ -1,44 +1,22 @@
-# ─────────────────────────────────────────────────────────────────
-# Dockerfile — STRYDE Backend (Railway + SQLite)
-# Stack: Laravel 11 · PHP 8.2 · SQLite · Vite · Node 20
-# ─────────────────────────────────────────────────────────────────
-
-# ── Etapa 1: Build de assets con Node/Vite ────────────────────────
-FROM node:20-alpine AS node-builder
-
-WORKDIR /app
-
-COPY package.json package-lock.json* ./
-RUN npm install
-
-COPY vite.config.js ./
-COPY resources/ ./resources/
-
-RUN npm run build
-
-# ── Etapa 2: Imagen de producción con PHP + Laravel ───────────────
-FROM php:8.2-fpm-alpine AS app
-
-LABEL maintainer="STRYDE" \
-      description="STRYDE — Laravel 11 + PHP 8.2 + SQLite (Railway)"
+FROM php:8.2-fpm-alpine
 
 RUN apk add --no-cache \
-        libpng-dev \
-        libzip-dev \
-        oniguruma-dev \
-        sqlite \
-        sqlite-dev \
-        curl \
-        nginx \
-        supervisor \
+    libpng-dev \
+    libzip-dev \
+    oniguruma-dev \
+    sqlite \
+    sqlite-dev \
+    curl \
+    nginx \
+    supervisor \
     && docker-php-ext-install \
-        pdo \
-        pdo_sqlite \
-        mbstring \
-        zip \
-        gd \
-        bcmath \
-        opcache
+    pdo \
+    pdo_sqlite \
+    mbstring \
+    zip \
+    gd \
+    bcmath \
+    opcache
 
 COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
 
@@ -46,15 +24,13 @@ WORKDIR /var/www/html
 
 COPY composer.json composer.lock ./
 RUN composer install \
-        --no-dev \
-        --no-interaction \
-        --no-scripts \
-        --optimize-autoloader \
-        --prefer-dist
+    --no-dev \
+    --no-interaction \
+    --no-scripts \
+    --optimize-autoloader \
+    --prefer-dist
 
 COPY . .
-
-COPY --from=node-builder /app/public/build ./public/build
 
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/storage \
@@ -62,14 +38,9 @@ RUN chown -R www-data:www-data /var/www/html \
 
 COPY docker/nginx.conf       /etc/nginx/http.d/default.conf
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-COPY docker/php-opcache.ini  /usr/local/etc/php/conf.d/opcache.ini
-
-COPY docker/start.sh /usr/local/bin/start.sh
+COPY docker/start.sh         /usr/local/bin/start.sh
 RUN chmod +x /usr/local/bin/start.sh
 
 EXPOSE 8080
-
-HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-    CMD curl -fsSL http://localhost:8080/up || exit 1
 
 CMD ["/usr/local/bin/start.sh"]

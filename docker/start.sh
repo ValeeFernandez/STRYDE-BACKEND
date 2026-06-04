@@ -3,38 +3,29 @@ set -e
 
 echo ">>> Generando .env..."
 cat > /var/www/html/.env <<EOF
-APP_NAME="${APP_NAME:-TenisShop}"
-APP_ENV="${APP_ENV:-production}"
+APP_NAME="${APP_NAME:-STRYDE}"
+APP_ENV=production
 APP_KEY="${APP_KEY:-}"
-APP_DEBUG="${APP_DEBUG:-true}"
-APP_URL="${APP_URL:-https://tenisshop-production.up.railway.app/}"
+APP_DEBUG=false
+APP_URL="${APP_URL:-http://localhost}"
+
 LOG_CHANNEL=stderr
 LOG_LEVEL=error
+
 DB_CONNECTION=sqlite
 DB_DATABASE="${DB_DATABASE:-/var/data/database.sqlite}"
+
 SESSION_DRIVER=file
-SESSION_LIFETIME=120
 CACHE_STORE=file
 QUEUE_CONNECTION=sync
 EOF
 
+echo ">>> Preparando base de datos SQLite..."
 DB_PATH="${DB_DATABASE:-/var/data/database.sqlite}"
-DB_DIR=$(dirname "$DB_PATH")
-echo ">>> Verificando directorio de base de datos: $DB_DIR"
-mkdir -p "$DB_DIR"
-echo ">>> Creando archivo SQLite si no existe..."
+mkdir -p "$(dirname $DB_PATH)"
 touch "$DB_PATH"
-chown -R www-data:www-data "$DB_DIR"
-chmod -R 775 "$DB_DIR"
+chown www-data:www-data "$DB_PATH"
 chmod 664 "$DB_PATH"
-
-# ── NUEVO: Crear directorio para socket de PHP-FPM ──────────────────
-echo ">>> Preparando socket de PHP-FPM..."
-mkdir -p /var/run/php-fpm
-chmod 755 /var/run/php-fpm
-
-echo ">>> Regenerando autoload..."
-composer dump-autoload --optimize --no-interaction
 
 echo ">>> Generando APP_KEY..."
 php artisan key:generate --force
@@ -42,19 +33,18 @@ php artisan key:generate --force
 echo ">>> Corriendo migraciones..."
 php artisan migrate --force
 
-echo ">>> Corriendo seeders solo si la BD está vacía..."
-TABLA=$(php artisan tinker --execute="echo \App\Models\Zapato::count();" 2>/dev/null || echo "0")
-if [ "$TABLA" = "0" ]; then
- echo ">>> BD vacía, corriendo seeders..."
- php artisan db:seed --force
+echo ">>> Corriendo seeders si la BD está vacía..."
+COUNT=$(php artisan tinker --execute="echo App\Models\Zapato::count();" 2>/dev/null | tail -1 || echo "0")
+if [ "$COUNT" = "0" ]; then
+  echo ">>> Corriendo seeders..."
+  php artisan db:seed --force
 fi
 
-echo ">>> Cacheando configuración..."
-php artisan config:clear
+echo ">>> Optimizando Laravel..."
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 php artisan storage:link
 
-echo ">>> Iniciando Supervisor (Nginx + PHP-FPM)..."
+echo ">>> Iniciando servicios..."
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
