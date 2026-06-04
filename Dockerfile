@@ -67,7 +67,7 @@ COPY docker/php-opcache.ini  /usr/local/etc/php/conf.d/opcache.ini
 COPY docker/start.sh /usr/local/bin/start.sh
 RUN chmod +x /usr/local/bin/start.sh
 
-EXPOSE 80
+EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
     CMD curl -fsSL http://localhost/up || exit 1
