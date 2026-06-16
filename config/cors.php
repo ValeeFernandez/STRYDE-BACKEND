@@ -6,7 +6,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:5173', 'https://strydestore.netlify.app'],
+    'allowed_origins' => ['http://localhost:5173', 'https://strydestore.netlify.app', 'https://styleproyecto3.netlify.app'],
 
     'allowed_origins_patterns' => [],
 
